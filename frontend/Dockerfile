@@ -1,29 +1,21 @@
 # ------------------------
-# 1. Build Stage
+# 1. BUILD STAGE
 # ------------------------
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copy root package.json to the container
+# Install dependencies
 COPY package.json package-lock.json ./
+RUN npm install --frozen-lockfile
 
-# Install root-level dependencies
-RUN npm install
+# Copy all frontend project files
+COPY . .
 
-# Copy ONLY frontend source
-COPY frontend ./frontend
-
-# Move into frontend directory
-WORKDIR /app/frontend
-
-# Install frontend-specific dependencies
-RUN npm install
-
-# Build Next.js app
+# Build Next.js project
 RUN npm run build
 
 # ------------------------
-# 2. Production Stage
+# 2. PRODUCTION STAGE
 # ------------------------
 FROM node:18-alpine AS runner
 WORKDIR /app
@@ -31,11 +23,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy build output
-COPY --from=builder /app/frontend/.next ./.next
-COPY --from=builder /app/frontend/public ./public
-COPY --from=builder /app/frontend/package.json ./
-COPY --from=builder /app/frontend/node_modules ./node_modules
+# Copy compiled output from builder
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 CMD ["npm", "start"]
